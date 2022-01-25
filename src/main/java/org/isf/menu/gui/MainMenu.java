@@ -52,6 +52,7 @@ import javax.swing.UIManager;
 
 import org.isf.generaldata.GeneralData;
 import org.isf.generaldata.MessageBundle;
+import org.isf.hl7.service.HL7SendReceive;
 import org.isf.menu.manager.Context;
 import org.isf.menu.manager.UserBrowsingManager;
 import org.isf.menu.model.User;
@@ -73,8 +74,9 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 
 	private static final long serialVersionUID = 7620582079916035164L;
 	public static final String ADMIN_STR = "admin";
-	private boolean flag_Xmpp;
-	private boolean flag_Sms;
+	private boolean isXMPPEnabled;
+	private boolean isSMSEnabled;
+	private boolean isHL7Enabled;
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(MainMenu.class);
 
@@ -143,10 +145,11 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 			if (debug) {
 				LOGGER.info("Debug: OpenHospital in debug mode.");
 			}
-			flag_Xmpp = GeneralData.XMPPMODULEENABLED;
-			flag_Sms = GeneralData.SMSENABLED;
+			isXMPPEnabled = GeneralData.XMPPMODULEENABLED;
+			isSMSEnabled = GeneralData.SMSENABLED;
+			isHL7Enabled = GeneralData.HL7ENABLED;
 			// start connection with SMS service
-			if (flag_Sms) {
+			if (isSMSEnabled) {
 				Thread thread = new Thread(new SmsSender());
 				thread.start();
 			}
@@ -172,6 +175,11 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 			}
 		}
 
+		if (isHL7Enabled) {
+			Thread thread = new Thread(new HL7SendReceive());
+			thread.start();
+		}
+
 		// get menu items
 		try {
 			myMenu = manager.getMenu(myUser);
@@ -180,7 +188,7 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 		}
 
 		// start connection with xmpp server if is enabled
-		if (flag_Xmpp) {
+		if (isXMPPEnabled) {
 			try {
 				Server.getInstance().login(myUser.getUserName(), myUser.getPasswd());
 				try {
@@ -206,7 +214,7 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 				} else {
 					LOGGER.error("An error occurs: {}", e.getMessage());
 				}
-				flag_Xmpp = GeneralData.XMPPMODULEENABLED = false;
+				isXMPPEnabled = GeneralData.XMPPMODULEENABLED = false;
 			}
 
 		}
@@ -219,9 +227,9 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 					junkMenu.add(umi);
 				}
 				if ("communication".equalsIgnoreCase(umi.getCode())) {
-					if (flag_Xmpp) {
+					if (isXMPPEnabled) {
 						LOGGER.info("Single user mode: set XMPPMODULEENABLED = false");
-						flag_Xmpp = GeneralData.XMPPMODULEENABLED = false;
+						isXMPPEnabled = GeneralData.XMPPMODULEENABLED = false;
 					}
 					junkMenu.add(umi);
 				}
@@ -230,7 +238,7 @@ public class MainMenu extends JFrame implements ActionListener, Login.LoginListe
 				myMenu.remove(umi);
 			}
 		} else { // remove only "communication" if flag_Xmpp = false
-			if (!flag_Xmpp) {
+			if (!isXMPPEnabled) {
 				List<UserMenuItem> junkMenu = new ArrayList<>();
 				for (UserMenuItem umi : myMenu) {
 					if ("communication".equalsIgnoreCase(umi.getCode())) {
